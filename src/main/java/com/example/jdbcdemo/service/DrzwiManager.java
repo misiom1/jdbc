@@ -34,6 +34,8 @@ public class DrzwiManager {
 	private PreparedStatement getKlientIdStmt;
 	private PreparedStatement getDrzwiIdStmt;
 	private PreparedStatement updateKlientStmt;
+	private PreparedStatement getKlientDrzwiStmt;
+	private PreparedStatement getDrzwisToKlientStmt;
 	private Statement statement;
 	public DrzwiManager() {
 		try {
@@ -99,6 +101,10 @@ public class DrzwiManager {
 					.prepareStatement("DELETE FROM Klient WHERE imie = ? AND nazwisko = ?");
 			updateKlientStmt = connection
 					.prepareStatement("UPDATE Klient SET imie = ?, nazwisko = ? WHERE imie = ? AND nazwisko = ?");
+			getKlientDrzwiStmt = connection
+					.prepareStatement("SELECT * FROM (KUP k JOIN DRZWI d ON k.IDDRZWI = d.ID) JOIN KLIENT l ON l.ID = k.IDKLIENT");
+			getDrzwisToKlientStmt = connection
+					.prepareStatement("SELECT * FROM (KUP k JOIN DRZWI d ON k.IDDRZWI = d.ID) JOIN KLIENT l ON l.ID = k.IDKLIENT WHERE IMIE = ? AND NAZWISKO = ?");
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -135,14 +141,14 @@ public class DrzwiManager {
 			getKlientIdStmt.setString(1, klient.getImie());
 			getKlientIdStmt.setString(2, klient.getNazwisko());
 			ResultSet rs = getKlientIdStmt.executeQuery();
-			klientid = rs.getInt("id");
 			rs.next();
+			klientid = rs.getInt("id");
 			getDrzwiIdStmt.setString(1, drzwi.getProducent());
 			getDrzwiIdStmt.setString(2, drzwi.getModel());
 			getDrzwiIdStmt.setString(3, drzwi.getKolor());
-			rs = getKlientIdStmt.executeQuery();
-			rs.next();
-			drzwiid = rs.getInt("id");
+			ResultSet r = getKlientIdStmt.executeQuery();
+			r.next();
+			drzwiid = r.getInt("id");
 			deleteKupStmt.setLong(1, drzwiid);
 			deleteKupStmt.setLong(2, klientid);
 			count = deleteKupStmt.executeUpdate();
@@ -287,7 +293,44 @@ public class DrzwiManager {
 		}
 		return klients;
 	}
-	
+	public List<Drzwi> getAllDrzwiKlient() {
+		List<Drzwi> drzwiKlient = new ArrayList<Drzwi>();
+		try {
+			ResultSet rs = getKlientDrzwiStmt.executeQuery();
+			while(rs.next()) {
+				Drzwi d = new Drzwi();
+				d.setImie(rs.getString("imie"));
+				d.setNazwisko(rs.getString("nazwisko"));
+				d.setProducent(rs.getString("producent"));
+				d.setModel(rs.getString("model"));
+				d.setKolor(rs.getString("kolor"));
+				drzwiKlient.add(d);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return drzwiKlient;
+	}
+	public List<Drzwi> getDrzwiToKlient(Drzwi klient) {
+		List<Drzwi> drzwi = new ArrayList<Drzwi>();
+		try {
+			getDrzwisToKlientStmt.setString(1, klient.getImie());
+			getDrzwisToKlientStmt.setString(2, klient.getNazwisko());
+			ResultSet rs = getDrzwisToKlientStmt.executeQuery();
+			while(rs.next()) {
+				Drzwi d = new Drzwi();
+				d.setImie(rs.getString("imie"));
+				d.setNazwisko(rs.getString("nazwisko"));
+				d.setProducent(rs.getString("producent"));
+				d.setModel(rs.getString("model"));
+				d.setKolor(rs.getString("kolor"));
+				drzwi.add(d);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return drzwi;
+	}
 	public void Commit() {
 		try {
 			connection.commit();
